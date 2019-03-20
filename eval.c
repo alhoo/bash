@@ -52,6 +52,10 @@
 extern sigset_t top_level_mask;
 #endif
 
+#ifndef EXEC_HOOK
+#  define EXEC_HOOK "command_exec_handle"
+#endif
+
 static void send_pwd_to_eterm __P((void));
 static sighandler alrm_catcher __P((int));
 
@@ -172,7 +176,15 @@ reader_loop ()
 	      executing = 1;
 	      stdin_redir = 0;
 
-	      execute_command (current_command);
+	      SHELL_VAR *hookf = find_function (EXEC_HOOK);
+              if (hookf == 0) {
+                  execute_command (current_command);
+              } else {
+                  char *command_to_print = make_command_string (current_command);
+                  WORD_LIST *og = make_word_list(make_word(command_to_print), (WORD_LIST *)NULL);
+                  WORD_LIST *wl = make_word_list(make_word(EXEC_HOOK), og);
+                  execute_shell_function (hookf, wl);
+              }
 
 	    exec_done:
 	      QUIT;
